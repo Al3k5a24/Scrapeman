@@ -5,12 +5,20 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 import os
 
-
 class MainSpiderScraper(scrapy.Spider):
+    #name for cli call, syntax scrapy crawl *name*
     name = "FragranceSpider"
+
+    #url from main page of website that will be scraped
     allowed_domains = ["kupujemprodajem.com", "www.kupujemprodajem.com"]
+
+    #specific urls that you want to scrape from
     base_url = "https://www.kupujemprodajem.com/nega-i-licna-higijena/parfemi-muski/pretraga?keywords=xerjoff%20naxos&categoryId=20&groupId=1314&ignoreUserId=no&page="
+
+    #define path where you want to save your xlsx file
     excel_path = r"C:\Users\lekid\OneDrive\Desktop\proba.xlsx"
+
+    #number of pages to be scraped
     max_pages = 50
 
     custom_settings = {
@@ -26,7 +34,7 @@ class MainSpiderScraper(scrapy.Spider):
         self.worksheet = self.workbook.active
         self.worksheet.title = "Fragrances"
 
-        headers = ['Header', 'Price', 'Link']
+        headers = ['Header', 'Price']
         self.worksheet.append(headers)
 
         #fell free to customize by taste
@@ -46,17 +54,18 @@ class MainSpiderScraper(scrapy.Spider):
 
     def parse(self, response):
         current_page = response.meta['page']
-        print(f"━━━━━━ PAGE {current_page} ━━━━━━")
         fragrances = response.css(".AdItem_adOuterHolder__hb5N_")
 
-        if not fragrances:
-            print(f"✗ No items found. Stopping at page {current_page}")
-            return
+        #data which will be scraped
         for i, fragrance in enumerate(fragrances):
             item = FragranceItem()
+
+            #specific url
             relative_url = fragrance.css("a::attr(href)").get()
             full_url = response.urljoin(relative_url)
             link=item["link"] = full_url
+
+            # use this syntax to add more data if you need
             header=item["header"] = fragrance.css("div.AdItem_name__iOZvA::text").get()
             price=item["price"] = fragrance.css("div.AdItem_price__VZ_at div::text").get()
 
@@ -66,6 +75,7 @@ class MainSpiderScraper(scrapy.Spider):
             if header:
                 self.worksheet.append([header, price])
 
+            #make header as hyper-link
             if link:
                 link_cell = self.worksheet.cell(row=self.row_num, column=1)
                 link_cell.hyperlink = link

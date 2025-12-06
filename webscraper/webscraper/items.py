@@ -5,7 +5,7 @@
 
 import scrapy
 
-
+#object which we will scrape / change name by will
 class FragranceItem(scrapy.Item):
 
     link = scrapy.Field()
