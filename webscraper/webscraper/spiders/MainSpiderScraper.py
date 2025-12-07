@@ -72,7 +72,7 @@ class MainSpiderScraper(scrapy.Spider):
         for i, fragrance in enumerate(fragrances):
             # Specific URL
             relative_url = fragrance.css("a::attr(href)").get()
-            full_url = response.urljoin(relative_url) if relative_url else None
+            full_url = response.urljoin(relative_url)
 
             # Use this syntax to add more data if you need
             header = fragrance.css("div.AdItem_name__iOZvA::text").get()
@@ -90,15 +90,17 @@ class MainSpiderScraper(scrapy.Spider):
                 item["date"] = date
                 yield item
 
-                if full_url:
-                    link_cell = self.worksheet.cell(row=self.row_num, column=1)
-                    link_cell.hyperlink = full_url
-                    link_cell.font = Font(color="0563C1", underline="single")
-
                 # Add to Excel
                 self.worksheet.append([header, price, date])
 
-                self.row_num += 1
+                current_row=self.worksheet.max_row
+
+                if full_url:
+                    link_cell = self.worksheet.cell(row=current_row, column=1)
+                    link_cell.hyperlink = full_url
+                    link_cell.font = Font(color="0563C1", underline="single")
+
+                current_row += 1
                 items_scraped += 1
 
         # Next page - only if items were found
