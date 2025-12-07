@@ -43,11 +43,6 @@ class MainSpiderScraper(scrapy.Spider):
             cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
             cell.font = Font(bold=True, color="FFFFFF")
 
-        # Freeze header row
-        self.worksheet.freeze_panes = 'A2'
-
-        self.row_num = 2
-
     def start_requests(self):
         yield scrapy.Request(
             url=f"{self.base_url}1",
@@ -70,6 +65,7 @@ class MainSpiderScraper(scrapy.Spider):
 
         # Data which will be scraped
         for i, fragrance in enumerate(fragrances):
+
             # Specific URL
             relative_url = fragrance.css("a::attr(href)").get()
             full_url = response.urljoin(relative_url)
@@ -78,8 +74,7 @@ class MainSpiderScraper(scrapy.Spider):
             header = fragrance.css("div.AdItem_name__iOZvA::text").get()
             price = fragrance.css("div.AdItem_price__VZ_at div::text").get()
 
-            # Method 1: XPath with contains()
-            date = fragrance.xpath(".//p[contains(text(), 'pre')]/text()").get()
+            date = fragrance.xpath(".//p[contains(text(), 'dan')]/text() | .//p[contains(text(), 'juče')]/text()").get()
 
             # Only process if header exists
             if header:
@@ -90,7 +85,6 @@ class MainSpiderScraper(scrapy.Spider):
                 item["date"] = date
                 yield item
 
-                # Add to Excel
                 self.worksheet.append([header, price, date])
 
                 current_row=self.worksheet.max_row
