@@ -1,6 +1,6 @@
 # <h1 style="font-size: 36px; margin: 0;">Scrapeman - Data Collector 🕷️</h1>
 
-A powerful web scraping application built with Scrapy that extracts listings from online marketplaces. This project automatically collects product information including titles, prices, publication dates, and locations, then exports the data to a formatted Excel spreadsheet with automatic currency conversion and hyperlink support.
+A powerful web scraping script built with Scrapy that extracts listings from online marketplaces. This project automatically collects product information including titles, prices, publication dates, and locations, then exports the data to a formatted Excel spreadsheet with automatic currency conversion and hyperlink support.
 
 
 ⚠️ **Please read Important Requirements & Limitations section carefully before attempting to use this scraper on any website.**
