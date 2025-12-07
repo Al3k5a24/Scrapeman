@@ -1,24 +1,25 @@
 import scrapy
 from ..items import FragranceItem
-import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 import os
 
+
 class MainSpiderScraper(scrapy.Spider):
-    #name for cli call, syntax scrapy crawl *name*
+
+    # Name for CLI call, syntax: scrapy crawl FragranceSpider
     name = "FragranceSpider"
 
-    #url from main page of website that will be scraped
+    # URL from main page of website that will be scraped
     allowed_domains = ["kupujemprodajem.com", "www.kupujemprodajem.com"]
 
-    #specific urls that you want to scrape from
+    # Specific URLs that you want to scrape from
     base_url = "https://www.kupujemprodajem.com/nega-i-licna-higijena/parfemi-muski/pretraga?keywords=xerjoff%20naxos&categoryId=20&groupId=1314&ignoreUserId=no&page="
 
-    #define path where you want to save your xlsx file
+    # Define path where you want to save your xlsx file
     excel_path = r"C:\Users\lekid\OneDrive\Desktop\proba.xlsx"
 
-    #number of pages to be scraped
+    # Number of pages to be scraped
     max_pages = 50
 
     custom_settings = {
@@ -29,19 +30,21 @@ class MainSpiderScraper(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        #create excel workbook
+        # Create Excel workbook
         self.workbook = Workbook()
         self.worksheet = self.workbook.active
         self.worksheet.title = "Fragrances"
 
-        headers = ['Header', 'Price']
+        headers = ['Header', 'Price', 'Date Posted']
         self.worksheet.append(headers)
 
-        #fell free to customize by taste
         for cell in self.worksheet[1]:
             cell.font = Font(bold=True, size=12)
             cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
             cell.font = Font(bold=True, color="FFFFFF")
+
+        # Freeze header row
+        self.worksheet.freeze_panes = 'A2'
 
         self.row_num = 2
 
@@ -54,40 +57,52 @@ class MainSpiderScraper(scrapy.Spider):
 
     def parse(self, response):
         current_page = response.meta['page']
+        print(f"━━━━━━ PAGE {current_page} ━━━━━━")
+
         fragrances = response.css(".AdItem_adOuterHolder__hb5N_")
 
-        #data which will be scraped
+        # ✅ Check for empty page FIRST
+        if not fragrances:
+            print(f" No items found on page {current_page}. Stopping.")
+            return
+
+        items_scraped = 0
+
+        # Data which will be scraped
         for i, fragrance in enumerate(fragrances):
-            item = FragranceItem()
-
-            #specific url
+            # Specific URL
             relative_url = fragrance.css("a::attr(href)").get()
-            full_url = response.urljoin(relative_url)
-            link=item["link"] = full_url
+            full_url = response.urljoin(relative_url) if relative_url else None
 
-            # use this syntax to add more data if you need
-            header=item["header"] = fragrance.css("div.AdItem_name__iOZvA::text").get()
-            price=item["price"] = fragrance.css("div.AdItem_price__VZ_at div::text").get()
+            # Use this syntax to add more data if you need
+            header = fragrance.css("div.AdItem_name__iOZvA::text").get()
+            price = fragrance.css("div.AdItem_price__VZ_at div::text").get()
 
-            if link:
-                link = response.urljoin(link)
+            # Method 1: XPath with contains()
+            date = fragrance.xpath(".//p[contains(text(), 'pre')]/text()").get()
 
+            # Only process if header exists
             if header:
-                self.worksheet.append([header, price])
-
-            #make header as hyper-link
-            if link:
-                link_cell = self.worksheet.cell(row=self.row_num, column=1)
-                link_cell.hyperlink = link
-                link_cell.font = Font(color="0563C1", underline="single")
-
-                self.row_num += 1
-
-            if item["header"]:
+                # Create Scrapy item
+                item = FragranceItem()
+                item["header"] = header
+                item["price"] = price
+                item["date"] = date
                 yield item
 
-        # next page
-        if current_page < self.max_pages:
+                if full_url:
+                    link_cell = self.worksheet.cell(row=self.row_num, column=1)
+                    link_cell.hyperlink = full_url
+                    link_cell.font = Font(color="0563C1", underline="single")
+
+                # Add to Excel
+                self.worksheet.append([header, price, date])
+
+                self.row_num += 1
+                items_scraped += 1
+
+        # Next page - only if items were found
+        if items_scraped > 0 and current_page < self.max_pages:
             yield scrapy.Request(
                 url=f"{self.base_url}{current_page + 1}",
                 callback=self.parse,
@@ -100,5 +115,3 @@ class MainSpiderScraper(scrapy.Spider):
             os.makedirs(directory)
 
         self.workbook.save(self.excel_path)
-        self.logger.info(f"✓ Excel saved: {self.excel_path}")
-        self.logger.info(f"✓ Total items: {self.row_num - 2}")
