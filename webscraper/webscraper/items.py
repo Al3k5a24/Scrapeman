@@ -13,4 +13,5 @@ class FragranceItem(scrapy.Item):
     price_rsd = scrapy.Field()
     date = scrapy.Field()
     location = scrapy.Field()
+    price_contact = scrapy.Field()
     pass

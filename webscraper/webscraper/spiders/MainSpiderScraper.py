@@ -37,7 +37,7 @@ class MainSpiderScraper(scrapy.Spider):
         self.worksheet = self.workbook.active
         self.worksheet.title = "Fragrances"
 
-        headers = ['Naslov', 'Cena (dinar)', 'Datum objave', 'Lokacija']
+        headers = ['Naslov', 'Cena (dinar)', 'Cena kontakt', 'Datum objave', 'Lokacija']
         self.worksheet.append(headers)
 
         #styling
@@ -55,17 +55,23 @@ class MainSpiderScraper(scrapy.Spider):
 
     def convert_to_rsd(self, price_text):
         price_clean = price_text.replace(" ", "").replace(".", "")
+
+        if "Kontakt" in price_clean:
+            return None, "Kontakt"
+
         if "€" in price_clean or "eur" in price_clean.lower():
             match = re.search(r'(\d+)', price_clean)
             if match:
                 eur_amount = int(match.group(1))
                 rsd_amount = eur_amount * self.EUR_TO_RSD
-                return rsd_amount, price_text
+                return rsd_amount, ""
         elif "din" in price_clean.lower() or "rsd" in price_clean.lower():
             match = re.search(r'(\d+)', price_clean)
             if match:
                 rsd_amount = int(match.group(1))
-                return rsd_amount, price_text
+                return rsd_amount, ""
+
+        return None,"Kontakt"
 
     def parse(self, response):
         current_page = response.meta['page']
@@ -103,11 +109,13 @@ class MainSpiderScraper(scrapy.Spider):
                 item["price_rsd"] = price_rsd
                 item["date"] = date
                 item["location"] = location
+                item["price_contact"] = original_price_text
                 yield item
 
                 self.worksheet.append([
                 header,
                 price_rsd,
+                original_price_text,
                 date,
                 location])
 
