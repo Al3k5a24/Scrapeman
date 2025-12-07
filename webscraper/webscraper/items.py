@@ -10,6 +10,7 @@ class FragranceItem(scrapy.Item):
 
     link = scrapy.Field()
     header = scrapy.Field()
-    price = scrapy.Field()
+    price_rsd = scrapy.Field()
     date = scrapy.Field()
+    location = scrapy.Field()
     pass

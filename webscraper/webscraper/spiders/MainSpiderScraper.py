@@ -3,7 +3,7 @@ from ..items import FragranceItem
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 import os
-
+import re
 
 class MainSpiderScraper(scrapy.Spider):
 
@@ -14,13 +14,16 @@ class MainSpiderScraper(scrapy.Spider):
     allowed_domains = ["kupujemprodajem.com", "www.kupujemprodajem.com"]
 
     # Specific URLs that you want to scrape from
-    base_url = "https://www.kupujemprodajem.com/nega-i-licna-higijena/parfemi-muski/pretraga?keywords=xerjoff%20naxos&categoryId=20&groupId=1314&ignoreUserId=no&page="
+    base_url = "https://www.kupujemprodajem.com/nega-i-licna-higijena/parfemi-muski/pretraga?categoryId=20&groupId=1314&keywords=ysl%20&page="
 
     # Define path where you want to save your xlsx file
-    excel_path = r"C:\Users\lekid\OneDrive\Desktop\proba.xlsx"
+    excel_path = r"C:\Users\lekid\OneDrive\Desktop\YSL.xlsx"
 
     # Number of pages to be scraped
     max_pages = 50
+
+    #Conversion
+    EUR_TO_RSD=117.0
 
     custom_settings = {
         'DOWNLOAD_DELAY': 1,
@@ -30,14 +33,14 @@ class MainSpiderScraper(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Create Excel workbook
         self.workbook = Workbook()
         self.worksheet = self.workbook.active
         self.worksheet.title = "Fragrances"
 
-        headers = ['Header', 'Price', 'Date Posted']
+        headers = ['Naslov', 'Cena (dinar)', 'Datum objave', 'Lokacija']
         self.worksheet.append(headers)
 
+        #styling
         for cell in self.worksheet[1]:
             cell.font = Font(bold=True, size=12)
             cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -50,13 +53,25 @@ class MainSpiderScraper(scrapy.Spider):
             meta={'page': 1}
         )
 
+    def convert_to_rsd(self, price_text):
+        price_clean = price_text.replace(" ", "").replace(".", "")
+        if "€" in price_clean or "eur" in price_clean.lower():
+            match = re.search(r'(\d+)', price_clean)
+            if match:
+                eur_amount = int(match.group(1))
+                rsd_amount = eur_amount * self.EUR_TO_RSD
+                return rsd_amount, price_text
+        elif "din" in price_clean.lower() or "rsd" in price_clean.lower():
+            match = re.search(r'(\d+)', price_clean)
+            if match:
+                rsd_amount = int(match.group(1))
+                return rsd_amount, price_text
+
     def parse(self, response):
         current_page = response.meta['page']
-        print(f"━━━━━━ PAGE {current_page} ━━━━━━")
 
         fragrances = response.css(".AdItem_adOuterHolder__hb5N_")
 
-        # ✅ Check for empty page FIRST
         if not fragrances:
             print(f" No items found on page {current_page}. Stopping.")
             return
@@ -74,27 +89,37 @@ class MainSpiderScraper(scrapy.Spider):
             header = fragrance.css("div.AdItem_name__iOZvA::text").get()
             price = fragrance.css("div.AdItem_price__VZ_at div::text").get()
 
-            date = fragrance.xpath(".//p[contains(text(), 'dan')]/text() | .//p[contains(text(), 'juče')]/text()").get()
+            price_rsd, original_price_text = self.convert_to_rsd(price) if self.convert_to_rsd(price) else (None, None)
+
+            date = fragrance.xpath(".//p[svg and (contains(., 'dan') or contains(., 'juče') or contains(., 'pre dana'))]/text()[normalize-space()]").get()
+            location = fragrance.css("div.AdItem_originAndPromoLocation__rQvKl p::text").get()
 
             # Only process if header exists
             if header:
+
                 # Create Scrapy item
                 item = FragranceItem()
                 item["header"] = header
-                item["price"] = price
+                item["price_rsd"] = price_rsd
                 item["date"] = date
+                item["location"] = location
                 yield item
 
-                self.worksheet.append([header, price, date])
+                self.worksheet.append([
+                header,
+                price_rsd,
+                date,
+                location])
 
                 current_row=self.worksheet.max_row
 
                 if full_url:
                     link_cell = self.worksheet.cell(row=current_row, column=1)
                     link_cell.hyperlink = full_url
+
+                    #fell free to change by taste
                     link_cell.font = Font(color="0563C1", underline="single")
 
-                current_row += 1
                 items_scraped += 1
 
         # Next page - only if items were found
