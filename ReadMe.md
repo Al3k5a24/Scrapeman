@@ -1,7 +1,11 @@
-# <h1 style="font-size: 36px; margin: 0;">WebScraper - Fragrance Data Collector 🕷️</h1>
+# <h1 style="font-size: 36px; margin: 0;">Scrapeman - Data Collector 🕷️</h1>
 
-A powerful web scraping application built with Scrapy that extracts fragrance listings from online marketplaces. This project automatically collects product information including titles, prices, publication dates, and locations, then exports the data to a formatted Excel spreadsheet with automatic currency conversion and hyperlink support.
+A powerful web scraping application built with Scrapy that extracts listings from online marketplaces. This project automatically collects product information including titles, prices, publication dates, and locations, then exports the data to a formatted Excel spreadsheet with automatic currency conversion and hyperlink support.
 
+
+⚠️ **Please read Important Requirements & Limitations section carefully before attempting to use this scraper on any website.**
+
+- [Important Requirements & Limitations](#important-requirements--limitations)
 - [Features](#features-)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
@@ -104,6 +108,96 @@ Before you begin, ensure you have the following installed on your system:
    scrapy version
    python -c "import openpyxl; print('openpyxl installed successfully')"
    ```
+
+---
+
+## Important Requirements & Limitations
+
+### Website Requirements
+
+This scraper is **explicitly designed** for websites with specific characteristics. It will **NOT work** with all types of websites:
+
+#### 1. **Server-Side Rendering (SSR) Required**
+
+- ✅ **Works with**: Traditional websites that render HTML on the server
+- ❌ **Does NOT work with**: Single Page Applications (SPAs) that require JavaScript execution
+- ❌ **Does NOT work with**: React, Vue, Angular, or other JavaScript frameworks that load content dynamically
+- **Why**: The scraper uses Scrapy's built-in HTML parser (`response.css()`, `response.xpath()`) which only processes static HTML. It does not execute JavaScript or wait for dynamic content to load.
+
+**How to check**: If you can view the page source (right-click → View Page Source) and see the content you want to scrape, the site likely uses SSR. If the content is missing from the source but visible in the browser, it's likely a JavaScript-rendered site.
+
+#### 2. **URL-Based Page Numeration Required**
+
+- ✅ **Works with**: URLs that include page numbers as query parameters or path segments
+  - Example: `https://example.com/search?page=1`, `https://example.com/search?page=2`
+  - Example: `https://example.com/search/page/1`, `https://example.com/search/page/2`
+- ❌ **Does NOT work with**: Infinite scroll or "Load More" button pagination
+- ❌ **Does NOT work with**: JavaScript-based pagination that doesn't change the URL
+
+**Current implementation**: The scraper expects URLs in the format:
+```
+base_url = "https://example.com/search?keywords=term&page="
+```
+It then appends page numbers: `page=1`, `page=2`, `page=3`, etc.
+
+#### 3. **Stable CSS Selectors Required**
+
+- The scraper relies on **specific CSS selectors** to extract data
+- These selectors are **hardcoded** in the spider code and are specific to the target website's HTML structure
+- If the website changes its HTML structure, CSS classes, or element hierarchy, the scraper will **stop working**
+
+**Current selectors used** (as examples):
+- `.AdItem_adOuterHolder__hb5N_` - Container for each listing
+- `div.AdItem_name__iOZvA` - Product title
+- `div.AdItem_price__VZ_at div` - Price element
+- `div.AdItem_originAndPromoLocation__rQvKl p` - Location element
+
+**Before using on a different website**: You **MUST** update all CSS selectors in `MainSpiderScraper.py` to match the target website's HTML structure.
+
+#### 4. **Consistent HTML Structure**
+
+- The website must have a **consistent HTML structure** across all pages
+- Each listing/item must follow the same pattern and use the same CSS classes or element hierarchy
+- The scraper expects to find multiple items on each page using the same selector
+
+### Legal & Ethical Considerations
+
+⚠️ **Important**: Web scraping may be subject to legal restrictions and website terms of service.
+
+- **Check robots.txt**: The scraper is configured to respect `robots.txt` files. Ensure the target website allows scraping.
+- **Review Terms of Service**: Many websites prohibit automated data collection. Always review and comply with the website's Terms of Service.
+- **Rate Limiting**: The scraper includes delays (1 second between requests) to avoid overloading servers. Do not reduce these delays without careful consideration.
+- **Personal Responsibility**: You are responsible for ensuring your use of this scraper complies with applicable laws and website policies.
+
+### Technical Limitations
+
+1. **No JavaScript Execution**: Cannot scrape content loaded via JavaScript/AJAX
+2. **No Browser Automation**: Does not use Selenium, Playwright, or similar tools
+3. **Fixed Selectors**: CSS selectors must be manually updated for each target website
+4. **Single Domain**: Configured to work with one domain at a time (see `allowed_domains`)
+5. **No Authentication**: Does not handle login-protected content or session management
+6. **No CAPTCHA Handling**: Cannot bypass CAPTCHA or other anti-bot measures
+
+### Before Using on a New Website
+
+1. ✅ Verify the website uses SSR (check page source)
+2. ✅ Confirm URL-based pagination exists
+3. ✅ Inspect the HTML structure and identify CSS selectors
+4. ✅ Update `base_url` with the correct pagination pattern
+5. ✅ Update all CSS selectors in the spider code
+6. ✅ Update `allowed_domains` to match the target website
+7. ✅ Test with a small number of pages first (`max_pages = 2`)
+8. ✅ Verify the website's robots.txt and Terms of Service
+
+### Modifying for Different Websites
+
+To adapt this scraper for a different website, you will need to:
+
+1. **Update CSS Selectors**: Modify all `response.css()` and `response.xpath()` calls in `MainSpiderScraper.py`
+2. **Update URL Pattern**: Change `base_url` to match the target website's pagination format
+3. **Update Data Extraction Logic**: Adjust the parsing logic to match the new HTML structure
+4. **Update Item Fields**: Modify `items.py` if you need different data fields
+5. **Test Thoroughly**: Always test with a small sample before running on many pages
 
 ---
 
@@ -213,8 +307,9 @@ This project is open-source and available under the MIT License.
 
 ## Notes
 
+- This scraper is **specifically designed** for SSR websites with URL-based pagination
 - Always respect website terms of service and robots.txt when scraping
-- Consider adding delays between requests to avoid overloading servers
-- Be aware that website structures may change, requiring code updates
-- This scraper is configured for a specific marketplace structure and may need modifications for other sites
+- Website structures may change over time, requiring code updates to CSS selectors
+- This scraper is currently configured for a specific marketplace structure and requires modifications for other sites
+- For JavaScript-heavy websites, consider using browser automation tools (Selenium, Playwright) instead of this Scrapy-based solution
 
