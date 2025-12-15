@@ -105,6 +105,7 @@ class MainSpiderScraper(scrapy.Spider):
 
                 # Create Scrapy item
                 item = FragranceItem()
+                item["url"] = full_url
                 item["header"] = header
                 item["price_rsd"] = price_rsd
                 item["date"] = date

@@ -7,8 +7,8 @@ import scrapy
 
 #object which we will scrape / change name by will
 class FragranceItem(scrapy.Item):
-
-    link = scrapy.Field()
+    _id = scrapy.Field()
+    url = scrapy.Field()
     header = scrapy.Field()
     price_rsd = scrapy.Field()
     date = scrapy.Field()

@@ -7,10 +7,10 @@
 # useful for handling different item types with a single interface
 from itemadapter import ItemAdapter
 
+import hashlib
 import pymongo
-
-#wraps diff data containers
 from itemadapter import ItemAdapter
+from scrapy.exceptions import DropItem
 
 class MongoPipeline:
     #MongoDB collection
@@ -37,10 +37,24 @@ class MongoPipeline:
     def close_spider(self, spider):
         self.client.close()
 
-    #every scraped item will be inserted in MongoDB
+    #every scraped item will be inserted in MongoDB and duplicates will be avoided
     def process_item(self, item, spider):
-        self.db[self.COLLECTION_NAME].insert_one(item)
-        return item
+        adapter = ItemAdapter(item)
+        item_id = self.compute_item_id(adapter)
+        
+        if self.db[self.COLLECTION_NAME].find_one({"_id": item_id}):
+            raise DropItem(f"Duplicate item found: {adapter.get('url')}")
+        else:
+            item_dict = adapter.asdict()
+            item_dict["_id"] = item_id
+            self.db[self.COLLECTION_NAME].insert_one(item_dict)
+            return item
+
+    def compute_item_id(self, adapter):
+        url = adapter.get("url")
+        if not url:
+            raise ValueError("Item must have 'url' field")
+        return hashlib.sha256(url.encode('utf-8')).hexdigest()
 
 class WebscraperPipeline:
     def process_item(self, item, spider):
