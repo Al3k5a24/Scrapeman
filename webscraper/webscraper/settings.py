@@ -12,6 +12,13 @@ BOT_NAME = "webscraper"
 SPIDER_MODULES = ["webscraper.spiders"]
 NEWSPIDER_MODULE = "webscraper.spiders"
 
+MONGO_URI = "mongodb://localhost:27017"
+MONGO_DATABASE = "Scrapeman"
+
+ITEM_PIPELINES = {
+    "books.pipelines.MongoPipeline": 300,
+}
+
 ADDONS = {}
 
 
