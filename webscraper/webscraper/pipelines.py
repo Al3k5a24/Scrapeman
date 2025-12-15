@@ -7,6 +7,8 @@
 # useful for handling different item types with a single interface
 from itemadapter import ItemAdapter
 
+class MongoPipeline:
+    COLLECTION_NAME="Scrapeman"
 
 class WebscraperPipeline:
     def process_item(self, item, spider):
